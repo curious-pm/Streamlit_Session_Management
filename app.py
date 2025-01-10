@@ -43,33 +43,63 @@ def save_sessions(sessions):
 
 # Check for active session
 def is_logged_in():
-    sessions = load_sessions()
-    user = st.session_state.get("username")
-    if user and user in sessions:
-        expiry = datetime.fromisoformat(sessions[user]["expiry"])
-        if expiry > datetime.now():
-            return True
-        else:
-            # Remove expired session
-            remove_session()
-    return False
+    try:
+        sessions = load_sessions()
+        # First check if there's a valid session file entry
+        for username, session_data in sessions.items():
+            expiry = datetime.fromisoformat(session_data["expiry"])
+            if expiry > datetime.now():
+                # Valid session found, update session state
+                st.session_state["username"] = username
+                st.session_state["page"] = "home"
+                return True
+            else:
+                # Remove expired session
+                remove_session(username)
+        return False
+    except Exception as e:
+        print(f"Session check error: {e}")
+        return False
 
 # Set session
 def set_session(username):
-    sessions = load_sessions()
-    expiry = datetime.now() + timedelta(days=1)  # Set session expiry to 1 day
-    sessions[username] = {"expiry": expiry.isoformat()}
-    save_sessions(sessions)
-    st.session_state["username"] = username
+    try:
+        sessions = load_sessions()
+        expiry = datetime.now() + timedelta(days=1)  # Set session expiry to 1 day
+        sessions[username] = {
+            "expiry": expiry.isoformat(),
+            "last_activity": datetime.now().isoformat()
+        }
+        save_sessions(sessions)
+        st.session_state["username"] = username
+        st.session_state["page"] = "home"
+    except Exception as e:
+        print(f"Error setting session: {e}")
 
 # Remove session
-def remove_session():
-    sessions = load_sessions()
-    user = st.session_state.get("username")
-    if user in sessions:
-        del sessions[user]
-    save_sessions(sessions)
-    st.session_state.pop("username", None)
+def remove_session(username=None):
+    try:
+        sessions = load_sessions()
+        if username is None:
+            username = st.session_state.get("username")
+        if username and username in sessions:
+            del sessions[username]
+        save_sessions(sessions)
+        if "username" in st.session_state:
+            del st.session_state["username"]
+        if "page" in st.session_state:
+            st.session_state["page"] = "login"
+    except Exception as e:
+        print(f"Error removing session: {e}")
+
+# Update session activity
+def update_session_activity():
+    if "username" in st.session_state:
+        sessions = load_sessions()
+        username = st.session_state["username"]
+        if username in sessions:
+            sessions[username]["last_activity"] = datetime.now().isoformat()
+            save_sessions(sessions)
 
 def create_user_profile(username):
     st.title("Create Your Profile")
@@ -89,6 +119,7 @@ def create_user_profile(username):
             save_users(users)
             st.success("Profile saved successfully!")
             st.session_state["page"] = "home"
+            st.rerun()
 
 def view_profile():
     users = load_users()
@@ -104,6 +135,7 @@ def view_profile():
         st.warning("Profile not set up yet!")
         if st.button("Create Profile"):
             st.session_state["page"] = "create_profile"
+            st.rerun()
 
 # Home page
 def home_page():
@@ -115,8 +147,10 @@ def home_page():
         st.title("Navigation")
         if st.button("View Profile"):
             st.session_state["page"] = "view_profile"
+            st.rerun()
         if st.button("Edit Profile"):
             st.session_state["page"] = "create_profile"
+            st.rerun()
         if st.button("Logout"):
             remove_session()
             st.session_state["page"] = "login"
@@ -166,6 +200,7 @@ def signup_page():
             save_users(users)
             st.success("Signup successful! Please log in.")
             st.session_state["page"] = "login"
+            st.rerun()
 
 # Login page
 def login_page():
@@ -185,7 +220,6 @@ def login_page():
                 if username in users and users[username]["password"] == hash_password(password):
                     set_session(username)
                     st.success("Login successful!")
-                    st.session_state["page"] = "home"
                     st.rerun()
                 else:
                     st.error("Invalid username or password.")
@@ -198,26 +232,29 @@ def login_page():
 
 # Main application logic
 def main():
-    # Initialize session state
-    if "page" not in st.session_state:
-        st.session_state["page"] = "login"
-
-    # Page routing
-    if st.session_state["page"] == "home" and is_logged_in():
-        home_page()
-    elif st.session_state["page"] == "signup":
-        signup_page()
-    elif st.session_state["page"] == "create_profile" and is_logged_in():
-        create_user_profile(st.session_state["username"])
-    elif st.session_state["page"] == "view_profile" and is_logged_in():
-        view_profile()
-    else:
-        login_page()
-
-if __name__ == "__main__":
+    # Set page config
     st.set_page_config(
         page_title="User Authentication App",
         page_icon="🔒",
         layout="wide"
     )
+
+    # First check if there's an active session
+    if is_logged_in():
+        update_session_activity()
+        # User is logged in, show appropriate page
+        if st.session_state.get("page") == "create_profile":
+            create_user_profile(st.session_state["username"])
+        elif st.session_state.get("page") == "view_profile":
+            view_profile()
+        else:
+            home_page()
+    else:
+        # No active session, show login or signup page
+        if st.session_state.get("page") == "signup":
+            signup_page()
+        else:
+            login_page()
+
+if __name__ == "__main__":
     main()
