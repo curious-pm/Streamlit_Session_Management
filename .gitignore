@@ -1,0 +1,14 @@
+# Python related files
+__pycache__/
+*.py[cod]
+
+# Environment related
+maxenv/
+
+# Streamlit specific
+.streamlit/
+sessions.json
+users.json
+
+# MacOS specific
+.DS_Store
