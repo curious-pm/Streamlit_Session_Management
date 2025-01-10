@@ -65,7 +65,7 @@ def is_logged_in():
 def set_session(username):
     try:
         sessions = load_sessions()
-        expiry = datetime.now() + timedelta(days=1)  # Set session expiry to 1 day
+        expiry = datetime.now() + timedelta(minutes=10)  # Set session expiry to 10 minutes
         sessions[username] = {
             "expiry": expiry.isoformat(),
             "last_activity": datetime.now().isoformat()
