@@ -255,6 +255,24 @@ def main():
             signup_page()
         else:
             login_page()
+    
+    # Add footer with styled link
+    st.markdown("""
+        <div style="position: fixed; bottom: 0; left: 0; right: 0; text-align: center; padding: 15px; background-color: white;">
+            <a href="https://nas.io/curious-pm" target="_blank" style="
+                text-decoration: none;
+                color: #333;
+                font-weight: 500;
+                padding: 8px 16px;
+                border-radius: 20px;
+                background: linear-gradient(135deg, #6e8efb, #4a6cf7);
+                color: white;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                font-family: 'Helvetica Neue', sans-serif;
+                ">By: https://nas.io/curious-pm</a>
+        </div>
+    """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
