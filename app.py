@@ -85,8 +85,8 @@ def display_sidebar():
         st.sidebar.write(f"**Password:** {password}")
         st.sidebar.markdown("---")
     # Add the link at the bottom
-        st.sidebar.markdown("### Explore More")
-        st.sidebar.markdown("[Visit organization](https://nas.io/curious-pm)")
+    st.sidebar.markdown("### Explore More")
+    st.sidebar.markdown("[Visit organization](https://nas.io/curious-pm)")
 
 
 # ============================
