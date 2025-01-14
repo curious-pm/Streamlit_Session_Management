@@ -76,10 +76,20 @@ def main_app_ui():
     if st.button("Logout"):
         clear_session()
         st.rerun()
+def display_sidebar():
+    """Display the sidebar with test credentials."""
+    st.sidebar.title("Test Credentials")
+    st.sidebar.markdown("Use the following credentials to test the application:")
+    for username, password in USER_CREDENTIALS.items():
+        st.sidebar.write(f"**Username:** {username}")
+        st.sidebar.write(f"**Password:** {password}")
+        st.sidebar.markdown("---")
 
 # ============================
 # Main Application Logic
 # ============================
+display_sidebar()
+
 if not is_session_valid():
     clear_session()
     login_ui()
