@@ -1,4 +1,4 @@
-# Streamlit Session Management Template
+# Streamlit Session Management 
 
 ## Introduction
 This project demonstrates how to implement session management in a Streamlit application. Session management ensures that users remain logged into an application for a specified duration, even across page reloads. If the session expires, the user must re-authenticate by providing their credentials.
