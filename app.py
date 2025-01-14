@@ -1,122 +1,87 @@
 import streamlit as st
-st.set_page_config(page_title="User Authentication App", page_icon="🔒", layout="wide")
+from datetime import datetime, timedelta
+from streamlit_cookies_manager import EncryptedCookieManager
 
-import os
-from utils.auth_utils import (
-    is_logged_in,
-    set_session,
-    remove_session,
-    validate_session,
-    hash_password,
-    load_users,
-    save_users,
-    logout_from_all_devices,
-    update_session_activity,
+# ============================
+# Configurable Constants
+# ============================
+SESSION_TIMEOUT_MINUTES = 10  # Session validity duration in minutes
+SESSION_COOKIE_KEY = "session_start_time"  # Key for session start time in cookies
+USER_CREDENTIALS = {
+    "admin": "password123",  # Default admin account
+    "user1": "mypassword",   # Example user account
+}  # Replace with secure storage for production
+
+# ============================
+# Initialize Cookies Manager
+# ============================
+cookies = EncryptedCookieManager(
+    prefix="secure_session_",  # Prefix for cookie keys
+    password="your_secure_password"  # Encryption password (replace for production)
 )
-from utils.profile_utils import create_user_profile, view_profile
-from datetime import datetime
 
-# Set Streamlit page configuration - MUST BE FIRST STREAMLIT COMMAND
+# Ensure cookies are ready
+if not cookies.ready():
+    st.stop()
 
-# Initialize files if not present
-for file in ["users.json", "sessions.json"]:
-    if not os.path.exists(file):
-        with open(file, "w") as f:
-            json.dump({}, f)
+# ============================
+# Helper Functions
+# ============================
+def is_session_valid():
+    """Check if the session is still valid."""
+    session_start_time = cookies.get(SESSION_COOKIE_KEY)
+    if session_start_time:
+        session_start_time = datetime.strptime(session_start_time, "%Y-%m-%d %H:%M:%S")
+        if datetime.now() - session_start_time < timedelta(minutes=SESSION_TIMEOUT_MINUTES):
+            return True
+    return False
 
-# Home page
-def home_page():
-    st.title("Welcome to Your Dashboard")
-    st.write(f"Logged in as: {st.session_state['username']}")
-    with st.sidebar:
-        st.title("Navigation")
-        if st.button("View Profile"):
-            st.session_state["page"] = "view_profile"
-            st.rerun()
-        if st.button("Edit Profile"):
-            st.session_state["page"] = "create_profile"
-            st.rerun()
-        if st.button("Logout"):
-            remove_session()
-            st.session_state["page"] = "login"
-            st.rerun()
-    st.write("### Recent Activity")
-    st.info("No recent activity to display")
-    st.write("### Quick Actions")
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Update Status"):
-            st.write("Feature coming soon!")
-    with col2:
-        if st.button("Send Message"):
-            st.write("Feature coming soon!")
+def refresh_session():
+    """Refresh the session by setting a new start time."""
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if cookies.get(SESSION_COOKIE_KEY) != current_time:
+        cookies[SESSION_COOKIE_KEY] = current_time
+        cookies.save()
 
-# Signup page
-def signup_page():
-    st.title("Create New Account")
-    with st.form("signup_form"):
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        confirm_password = st.text_input("Confirm Password", type="password")
-        submit = st.form_submit_button("Sign Up")
-        if submit:
-            if not username or not password:
-                st.error("Username and password cannot be empty.")
-                return
-            if password != confirm_password:
-                st.error("Passwords do not match.")
-                return
-            users = load_users()
-            if username in users:
-                st.error("Username already exists.")
-                return
-            users[username] = {
-                "password": hash_password(password),
-                "created_at": datetime.now().isoformat(),
-            }
-            save_users(users)
-            st.success("Signup successful! Please log in.")
-            st.session_state["page"] = "login"
-            st.rerun()
+def clear_session():
+    """Clear the session by setting the cookie value to an empty string."""
+    if cookies.get(SESSION_COOKIE_KEY):
+        cookies[SESSION_COOKIE_KEY] = ""
+        cookies.save()
 
-# Login page
-def login_page():
+# ============================
+# UI Functions
+# ============================
+def login_ui():
+    """Render the login interface."""
     st.title("Login to Your Account")
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        with st.form("login_form"):
-            username = st.text_input("Username")
-            password = st.text_input("Password", type="password")
-            submit = st.form_submit_button("Login")
-            if submit:
-                users = load_users()
-                if username in users and users[username]["password"] == hash_password(password):
-                    logout_from_all_devices(username)
-                    set_session(username)
-                    st.success("Login successful!")
-                    st.rerun()
-                else:
-                    st.error("Invalid username or password.")
-        st.write("Don't have an account?")
-        if st.button("Sign Up"):
-            st.session_state["page"] = "signup"
+    st.markdown("Please log in to access the application.")
+    username = st.text_input("Username", placeholder="Enter your username")
+    password = st.text_input("Password", type="password", placeholder="Enter your password")
+    
+    if st.button("Login"):
+        if username in USER_CREDENTIALS and USER_CREDENTIALS[username] == password:
+            refresh_session()
+            st.success("Login successful! Refreshing page...")
             st.rerun()
-
-# Main application logic
-def main():
-    if is_logged_in():
-        update_session_activity()
-        if st.session_state.get("page") == "create_profile":
-            create_user_profile(st.session_state["username"])
-        elif st.session_state.get("page") == "view_profile":
-            view_profile()
         else:
-            home_page()
-    else:
-        if st.session_state.get("page") == "signup":
-            signup_page()
-        else:
-            login_page()
+            st.error("Invalid credentials. Please try again.")
 
-if __name__ == "__main__":
-    main()
+def main_app_ui():
+    """Render the main application interface."""
+    st.title("Welcome to the Secure Streamlit App")
+    st.markdown("This is a session-protected application.")
+    st.write("You are currently logged in.")
+    
+    if st.button("Logout"):
+        clear_session()
+        st.rerun()
+
+# ============================
+# Main Application Logic
+# ============================
+if not is_session_valid():
+    clear_session()
+    login_ui()
+else:
+    main_app_ui()
